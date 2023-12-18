@@ -40,9 +40,9 @@ print("[+] Iniciando a captura de vídeo...")
 # Obter a taxa de quadros do vídeo de entrada
 fps_input = vs.get(cv2.CAP_PROP_FPS)
 
-# Definir as configurações do vídeo de saída
-output_video_path = "D:/Documentos/VisaoComputacional/video_detectado.mp4"
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+# Definir as configurações do vídeo de saída (AVI com codec XVID)
+output_video_path = "D:\WorkSpace VSCode\VisaoComputacional/video_detectado.avi"
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
 output_video = cv2.VideoWriter(output_video_path, fourcc, fps_input, (int(vs.get(3)), int(vs.get(4))))
 
 # Iterar sobre os frames do vídeo
