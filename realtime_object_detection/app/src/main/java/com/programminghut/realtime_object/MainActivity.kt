@@ -14,6 +14,7 @@ import android.os.HandlerThread
 import android.view.Surface
 import android.view.TextureView
 import android.widget.ImageView
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import com.programminghut.realtime_object.ml.SsdMobilenetV11Metadata1
 import org.tensorflow.lite.support.common.FileUtil
@@ -83,6 +84,7 @@ class MainActivity : AppCompatActivity() {
                 paint.strokeWidth = h/85f
                 var x = 0
                 scores.forEachIndexed { index, fl ->
+                    val detectedClass = labels.get(classes.get(index).toInt())
                     x = index
                     x *= 4
                     if(fl > 0.5){
@@ -91,6 +93,10 @@ class MainActivity : AppCompatActivity() {
                         canvas.drawRect(RectF(locations.get(x+1)*w, locations.get(x)*h, locations.get(x+3)*w, locations.get(x+2)*h), paint)
                         paint.style = Paint.Style.FILL
                         canvas.drawText(labels.get(classes.get(index).toInt())+" "+fl.toString(), locations.get(x+1)*w, locations.get(x)*h, paint)
+                    }
+                    if (detectedClass.toLowerCase() == "person" && fl > 0.5) {
+                        // Se a classe for "person", exibe um AlertDialog
+                        showPersonDetectedAlertDialog()
                     }
                 }
 
@@ -154,5 +160,18 @@ class MainActivity : AppCompatActivity() {
         if(grantResults[0] != PackageManager.PERMISSION_GRANTED){
             get_permission()
         }
+    }
+    fun showPersonDetectedAlertDialog() {
+        val alertDialogBuilder = AlertDialog.Builder(this)
+        alertDialogBuilder.setTitle("Pessoa Detectada")
+        alertDialogBuilder.setMessage("Uma pessoa foi detectada na imagem!")
+        alertDialogBuilder.setPositiveButton("OK") { dialog, _ ->
+            // Ação ao clicar no botão OK (opcional)
+            dialog.dismiss()
+        }
+
+        // Cria e exibe o AlertDialog
+        val alertDialog = alertDialogBuilder.create()
+        alertDialog.show()
     }
 }
