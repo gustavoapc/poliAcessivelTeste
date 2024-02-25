@@ -93,7 +93,7 @@ class MainActivity : AppCompatActivity() {
                 paint.strokeWidth = h / 85f
 
                 // Lista de classes desejadas para as quais queremos ativar o alerta por voz
-                val classesToAlert = listOf("person", "chair", "bench")
+                val classesToAlert = listOf("pessoa", "cadeira", "banco")
 
                 scores.forEachIndexed { index, fl ->
                     val detectedClass = labels[classes[index].toInt()]
