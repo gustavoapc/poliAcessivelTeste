@@ -1,4 +1,4 @@
-person
+pessoa
 bicycle
 car
 motorcycle
@@ -12,7 +12,7 @@ fire hydrant
 ???
 stop sign
 parking meter
-bench
+banco
 bird
 cat
 dog
@@ -59,7 +59,7 @@ hot dog
 pizza
 donut
 cake
-chair
+cadeira
 couch
 potted plant
 bed
