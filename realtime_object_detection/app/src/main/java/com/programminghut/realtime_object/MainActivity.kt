@@ -7,11 +7,12 @@ import android.graphics.*
 import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
+import android.speech.tts.TextToSpeech
+import android.util.Log
 import android.view.Surface
 import android.view.TextureView
 import android.widget.ImageView
@@ -21,6 +22,7 @@ import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.ResizeOp
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -43,6 +45,8 @@ class MainActivity : AppCompatActivity() {
 
     // Intervalo de tempo (em milissegundos) entre as detecções da mesma classe
     val detectionInterval = 5000L // 5 segundos
+
+    private lateinit var textToSpeech: TextToSpeech
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,7 +84,7 @@ class MainActivity : AppCompatActivity() {
                 val classes = outputs.classesAsTensorBuffer.floatArray
                 val scores = outputs.scoresAsTensorBuffer.floatArray
 
-                var mutable = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+                val mutable = bitmap.copy(Bitmap.Config.ARGB_8888, true)
                 val canvas = Canvas(mutable)
 
                 val h = mutable.height
@@ -88,10 +92,13 @@ class MainActivity : AppCompatActivity() {
                 paint.textSize = h / 15f
                 paint.strokeWidth = h / 85f
 
+                // Lista de classes desejadas para as quais queremos ativar o alerta por voz
+                val classesToAlert = listOf("person", "chair", "bench")
+
                 scores.forEachIndexed { index, fl ->
                     val detectedClass = labels[classes[index].toInt()]
                     val x = index * 4
-                    if (fl > 0.60 && shouldShowAlert(detectedClass)) {
+                    if (fl > 0.60 && shouldShowAlert(detectedClass) && detectedClass in classesToAlert) {
                         paint.color = colors[index]
                         paint.style = Paint.Style.STROKE
                         canvas.drawRect(
@@ -112,13 +119,7 @@ class MainActivity : AppCompatActivity() {
                         // Atualiza o tempo da última detecção para esta classe
                         lastDetectionTimeMap[detectedClass] = System.currentTimeMillis()
                         // Exibe o alerta para a classe detectada
-                        if (detectedClass.toLowerCase() == "person") {
-                            showAlert("Person Detected")
-                        } else if (detectedClass.toLowerCase() == "chair") {
-                            showAlert("Chair Detected")
-                        } else if (detectedClass.toLowerCase() == "bench") {
-                            showAlert("Bench Detected")
-                        }
+                        speakOut("A $detectedClass foi detectada.")
                     }
                 }
 
@@ -127,11 +128,26 @@ class MainActivity : AppCompatActivity() {
         }
 
         cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+
+        // Inicialize o TextToSpeech
+        textToSpeech = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val result = textToSpeech.setLanguage(Locale("pt", "BR"))
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    Log.e("TTS", "Language not supported")
+                }
+            } else {
+                Log.e("TTS", "Initialization failed")
+            }
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         model.close()
+        // No método onDestroy, libere os recursos do TextToSpeech
+        textToSpeech.stop()
+        textToSpeech.shutdown()
     }
 
     @SuppressLint("MissingPermission")
@@ -140,10 +156,10 @@ class MainActivity : AppCompatActivity() {
             override fun onOpened(p0: CameraDevice) {
                 cameraDevice = p0
 
-                var surfaceTexture = textureView.surfaceTexture
-                var surface = Surface(surfaceTexture)
+                val surfaceTexture = textureView.surfaceTexture
+                val surface = Surface(surfaceTexture)
 
-                var captureRequest = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+                val captureRequest = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
                 captureRequest.addTarget(surface)
 
                 cameraDevice.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
@@ -180,23 +196,7 @@ class MainActivity : AppCompatActivity() {
         return currentTime - lastDetectionTime >= detectionInterval
     }
 
-    // Exibe o alerta para a classe detectada
-    private fun showAlert(detectedClass: String) {
-        val title = "${detectedClass.capitalize()} Detected"
-        val message = "A $detectedClass was detected in the image!"
-        showAlertDialog(title, message)
-    }
-
-    // Exibe o alerta
-    private fun showAlertDialog(title: String, message: String) {
-        val alertDialogBuilder = AlertDialog.Builder(this)
-        alertDialogBuilder.setTitle(title)
-        alertDialogBuilder.setMessage(message)
-        alertDialogBuilder.setPositiveButton("OK") { dialog, _ ->
-            dialog.dismiss()
-        }
-
-        val alertDialog = alertDialogBuilder.create()
-        alertDialog.show()
+    private fun speakOut(message: String) {
+        textToSpeech.speak(message, TextToSpeech.QUEUE_FLUSH, null, "")
     }
 }
