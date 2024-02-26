@@ -1,3 +1,4 @@
-# realtime_object_detection
+# Poli Acessivel
 
-in refrence to tutorial: https://youtu.be/zs43IrWTzB0
+Ambiente de testes do projeto de Engenharia de Software
+Poli Acessivel
