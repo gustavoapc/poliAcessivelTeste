@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import android.view.Surface
 import android.view.TextureView
@@ -47,6 +48,10 @@ class MainActivity : AppCompatActivity() {
     val detectionInterval = 5000L // 5 segundos
 
     private lateinit var textToSpeech: TextToSpeech
+
+    // Fila para armazenar as mensagens a serem faladas
+    private val messageQueue = LinkedList<String>()
+    private var isSpeaking = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,7 +103,7 @@ class MainActivity : AppCompatActivity() {
                 scores.forEachIndexed { index, fl ->
                     val detectedClass = labels[classes[index].toInt()]
                     val x = index * 4
-                    if (fl > 0.60 && shouldShowAlert(detectedClass) && detectedClass in classesToAlert) {
+                    if (fl > 0.65 && shouldShowAlert(detectedClass) && detectedClass in classesToAlert) {
                         paint.color = colors[index]
                         paint.style = Paint.Style.STROKE
                         canvas.drawRect(
@@ -118,8 +123,8 @@ class MainActivity : AppCompatActivity() {
                         )
                         // Atualiza o tempo da última detecção para esta classe
                         lastDetectionTimeMap[detectedClass] = System.currentTimeMillis()
-                        // Exibe o alerta para a classe detectada
-                        speakOut("A $detectedClass foi detectada.")
+                        // Adiciona a mensagem à fila
+                        queueMessage("A $detectedClass foi detectada.")
                     }
                 }
 
@@ -196,7 +201,32 @@ class MainActivity : AppCompatActivity() {
         return currentTime - lastDetectionTime >= detectionInterval
     }
 
-    private fun speakOut(message: String) {
-        textToSpeech.speak(message, TextToSpeech.QUEUE_FLUSH, null, "")
+    // Adicione a mensagem à fila
+    private fun queueMessage(message: String) {
+        messageQueue.add(message)
+        speakNextMessage()
+    }
+
+    // Tente falar a próxima mensagem na fila
+    private fun speakNextMessage() {
+        if (!isSpeaking && messageQueue.isNotEmpty()) {
+            val message = messageQueue.poll()
+            isSpeaking = true
+            textToSpeech.speak(message, TextToSpeech.QUEUE_ADD, null, "")
+
+            // Verifique se a mensagem foi falada com sucesso
+            textToSpeech.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {}
+                override fun onDone(utteranceId: String?) {
+                    isSpeaking = false
+                    speakNextMessage()
+                }
+
+                override fun onError(utteranceId: String?) {
+                    isSpeaking = false
+                    speakNextMessage()
+                }
+            })
+        }
     }
 }
